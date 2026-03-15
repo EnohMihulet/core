@@ -135,6 +135,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 		bool PREFIX##_init(PREFIX##_DynArray* darr) {                                                                                       \
 			assert(darr != NULL);                                                                                                       \
 			size_t cap = (INIT_CAPACITY) == 0 ? CORE_DYNARRAY_DEFAULT_CAPACITY : (INIT_CAPACITY);                                       \
+			if (cap > ((size_t)-1) / sizeof(TYPE)) return false;                                                                        \
 			darr->items = (TYPE*)malloc(cap * sizeof(TYPE));                                                                            \
 			if (darr->items == NULL) return false;                                                                                      \
 			darr->size = 0;                                                                                                             \
@@ -200,7 +201,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 			assert(darr != NULL);                                                                                                       \
 			if (index >= darr->size) return false;                                                                                      \
 			if (PREFIX##_is_empty(darr)) return false;                                                                                  \
-			for (size_t i = index; i < size - 1; i++) {                                                                                 \
+			for (size_t i = index; i < darr->size - 1; i++) {                                                                                 \
 				darr->items[i] = darr->items[i+1];                                                                                  \
 			}                                                                                                                           \
 			darr->size--;                                                                                                               \

@@ -28,7 +28,7 @@ bool PREFIX##_is_empty(const PREFIX##_Queue* q);
 void PREFIX##_clear(PREFIX##_Queue* q);
 bool PREFIX##_enqueue(PREFIX##_Queue* q, TYPE item);
 bool PREFIX##_dequeue(PREFIX##_Queue* q, TYPE* out);
-bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);
+bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
 */
 
 #define CORE_QUEUE_GROWTH_RATE 2
@@ -54,7 +54,7 @@ bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);
 	void PREFIX##_clear(PREFIX##_Queue* q);                                                            \
 	bool PREFIX##_enqueue(PREFIX##_Queue* q, TYPE item);                                               \
 	bool PREFIX##_dequeue(PREFIX##_Queue* q, TYPE* out);                                               \
-	bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);                                                 \
+	bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);                                           \
                                                                                                            \
 	CORE_QUEUE_IMPL(                                                                                   \
 		static size_t PREFIX##_index_impl(const PREFIX##_Queue* q, size_t i) {                     \
@@ -65,9 +65,6 @@ bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);
 			return (i + 1 == q->capacity) ? 0 : i + 1;                                         \
 		}                                                                                          \
                                                                                                            \
-		static size_t PREFIX##_dec_impl(const PREFIX##_Queue* q, size_t i) {                       \
-			return (i == 0) ? q->capacity - 1 : i - 1;                                         \
-		}                                                                                          \
 		static bool PREFIX##_grow_impl(PREFIX##_Queue* q) {                                        \
 			assert(q != NULL);                                                                 \
 			size_t new_capacity;                                                               \
@@ -138,14 +135,13 @@ bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);
 			if (PREFIX##_is_full(q)) {                                                         \
 				if (!PREFIX##_grow_impl(q)) return false;                                  \
 			}                                                                                  \
-       			if (PREFIX##_is_empty(q)) {                                                        \
-       				q->front = 0;                                                              \
+			if (PREFIX##_is_empty(q)) {                                                       \
+				q->front = 0;                                                              \
 				q->back = 0;                                                               \
+			} else {                                                                           \
+				q->back = PREFIX##_inc_impl(q, q->back);                                  \
 			}                                                                                  \
-			else {                                                                             \
-       				q->front = PREFIX##_dec_impl(q, q->front);                                 \
-			}                                                                                  \
-			q->items[q->front] = item;                                                         \
+			q->items[q->back] = item;                                                          \
 			q->size++;                                                                         \
 			return true;                                                                       \
 		}                                                                                          \
@@ -154,23 +150,22 @@ bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out);
 			assert(q != NULL);                                                                 \
 			assert(out != NULL);                                                               \
 			if (PREFIX##_is_empty(q)) return false;                                            \
-			*out = q->items[q->back];                                                          \
+			*out = q->items[q->front];                                                         \
 			q->size--;                                                                         \
 			if (PREFIX##_is_empty(q)) {                                                        \
-       				q->front = 0;                                                              \
+				q->front = 0;                                                              \
 				q->back = 0;                                                               \
-			}                                                                                  \
-       			else {                                                                             \
-				q->back = PREFIX##_dec_impl(q, q->back);                                   \
+			} else {                                                                           \
+				q->front = PREFIX##_inc_impl(q, q->front);                                \
 			}                                                                                  \
 			return true;                                                                       \
 		}                                                                                          \
                                                                                                            \
-		bool PREFIX##_front(PREFIX##_Queue* q, TYPE* out) {                                        \
+		bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out) {                                  \
 			assert(q != NULL);                                                                 \
 			assert(out != NULL);                                                               \
 			if (PREFIX##_is_empty(q)) return false;                                            \
-       			*out = q->items[q->back];                                                          \
+			*out = q->items[q->front];                                                         \
 			return true;                                                                       \
 		}                                                                                          \
 	)
