@@ -26,6 +26,7 @@ void PREFIX##_free(PREFIX##_Stack* st);
 bool PREFIX##_is_full(const PREFIX##_Stack* st);
 bool PREFIX##_is_empty(const PREFIX##_Stack* st);
 void PREFIX##_clear(PREFIX##_Stack* st);
+bool PREFIX##_reserve(PREFIX##_Stack* st, size_t capacity);
 bool PREFIX##_push(PREFIX##_Stack* st, TYPE item);
 bool PREFIX##_pop(PREFIX##_Stack* st, TYPE* out);
 bool PREFIX##_top(const PREFIX##_Stack* st, TYPE* out)
@@ -52,11 +53,23 @@ bool PREFIX##_top(const PREFIX##_Stack* st, TYPE* out)
 	bool PREFIX##_is_full(const PREFIX##_Stack* st);                                                   \
 	bool PREFIX##_is_empty(const PREFIX##_Stack* st);                                                  \
 	void PREFIX##_clear(PREFIX##_Stack* st);                                                           \
+	bool PREFIX##_reserve(PREFIX##_Stack* st, size_t capacity);                                        \
 	bool PREFIX##_push(PREFIX##_Stack* st, TYPE item);                                                 \
 	bool PREFIX##_pop(PREFIX##_Stack* st, TYPE* out);                                                  \
 	bool PREFIX##_top(const PREFIX##_Stack* st, TYPE* out);                                            \
                                                                                                            \
 	CORE_STACK_IMPL(                                                                                   \
+		static bool PREFIX##_reserve_impl(PREFIX##_Stack* st, size_t min_capacity) {               \
+			assert(st != NULL);                                                                \
+			if (min_capacity <= st->capacity) return true;                                      \
+			if (min_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                       \
+			TYPE* new_items = (TYPE*)realloc(st->items, min_capacity * sizeof(TYPE));           \
+			if (new_items == NULL) return false;                                               \
+			st->items = new_items;                                                             \
+			st->capacity = min_capacity;                                                       \
+			return true;                                                                       \
+		}                                                                                          \
+                                                                                                            \
 		static bool PREFIX##_grow_impl(PREFIX##_Stack* st) {                                       \
 			assert(st != NULL);                                                                \
                                                                                                            \
@@ -69,13 +82,7 @@ bool PREFIX##_top(const PREFIX##_Stack* st, TYPE* out)
 				new_capacity = st->capacity * CORE_STACK_GROWTH_RATE;                      \
 				if (new_capacity <= st->capacity) return false;                            \
 			}                                                                                  \
-			if (new_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                      \
-			TYPE* new_items = (TYPE*)realloc(st->items, new_capacity * sizeof(TYPE));          \
-			if (new_items == NULL) return false;                                               \
-                                                                                                           \
-			st->items = new_items;                                                             \
-			st->capacity = new_capacity;                                                       \
-			return true;                                                                       \
+			return PREFIX##_reserve_impl(st, new_capacity);                                    \
 		}                                                                                          \
                                                                                                            \
 		bool PREFIX##_init(PREFIX##_Stack* st) {                                                   \
@@ -111,7 +118,12 @@ bool PREFIX##_top(const PREFIX##_Stack* st, TYPE* out)
 			assert(st != NULL);                                                                \
 			st->size = 0;                                                                      \
 		}                                                                                          \
-                                                                                                           \
+                                                                                                            \
+		bool PREFIX##_reserve(PREFIX##_Stack* st, size_t capacity) {                            \
+			assert(st != NULL);                                                                \
+			return PREFIX##_reserve_impl(st, capacity);                                         \
+		}                                                                                          \
+                                                                                                            \
 		bool PREFIX##_push(PREFIX##_Stack* st, TYPE item) {                                        \
 			assert(st != NULL);                                                                \
 			if (PREFIX##_is_full(st)) {                                                        \

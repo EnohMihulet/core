@@ -26,6 +26,7 @@ void PREFIX##_free(PREFIX##_Queue* q);
 bool PREFIX##_is_full(const PREFIX##_Queue* q);
 bool PREFIX##_is_empty(const PREFIX##_Queue* q);
 void PREFIX##_clear(PREFIX##_Queue* q);
+bool PREFIX##_reserve(PREFIX##_Queue* q, size_t capacity);
 bool PREFIX##_enqueue(PREFIX##_Queue* q, TYPE item);
 bool PREFIX##_dequeue(PREFIX##_Queue* q, TYPE* out);
 bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
@@ -52,6 +53,7 @@ bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
 	bool PREFIX##_is_full(const PREFIX##_Queue* q);                                                    \
 	bool PREFIX##_is_empty(const PREFIX##_Queue* q);                                                   \
 	void PREFIX##_clear(PREFIX##_Queue* q);                                                            \
+	bool PREFIX##_reserve(PREFIX##_Queue* q, size_t capacity);                                         \
 	bool PREFIX##_enqueue(PREFIX##_Queue* q, TYPE item);                                               \
 	bool PREFIX##_dequeue(PREFIX##_Queue* q, TYPE* out);                                               \
 	bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);                                           \
@@ -64,7 +66,24 @@ bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
 		static size_t PREFIX##_inc_impl(const PREFIX##_Queue* q, size_t i) {                       \
 			return (i + 1 == q->capacity) ? 0 : i + 1;                                         \
 		}                                                                                          \
-                                                                                                           \
+                                                                                                            \
+		static bool PREFIX##_reserve_impl(PREFIX##_Queue* q, size_t min_capacity) {             \
+			assert(q != NULL);                                                                 \
+			if (min_capacity <= q->capacity) return true;                                       \
+			if (min_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                        \
+			TYPE* new_items = (TYPE*)malloc(min_capacity * sizeof(TYPE));                         \
+			if (new_items == NULL) return false;                                               \
+			for (size_t i = 0; i < q->size; i++) {                                             \
+				new_items[i] = q->items[PREFIX##_index_impl(q, i)];                            \
+			}                                                                                  \
+			free(q->items);                                                                    \
+			q->items = new_items;                                                              \
+			q->front = 0;                                                                      \
+			q->back = q->size ? q->size - 1 : 0;                                               \
+			q->capacity = min_capacity;                                                        \
+			return true;                                                                       \
+		}                                                                                          \
+                                                                                                            \
 		static bool PREFIX##_grow_impl(PREFIX##_Queue* q) {                                        \
 			assert(q != NULL);                                                                 \
 			size_t new_capacity;                                                               \
@@ -76,18 +95,7 @@ bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
 				new_capacity = q->capacity * CORE_QUEUE_GROWTH_RATE;                       \
 				if (new_capacity <= q->capacity) return false;                             \
 			}                                                                                  \
-			if (new_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                      \
-			TYPE* new_items = (TYPE*)malloc(new_capacity * sizeof(TYPE));                      \
-			if (new_items == NULL) return false;                                               \
-			for (size_t i = 0; i < q->size; i++) {                                             \
-				new_items[i] = q->items[PREFIX##_index_impl(q, i)];                        \
-			}                                                                                  \
-			free(q->items);                                                                    \
-			q->items = new_items;                                                              \
-			q->front = 0;                                                                      \
-			q->back = q->size ? q->size - 1 : 0;                                               \
-			q->capacity = new_capacity;                                                        \
-			return true;                                                                       \
+			return PREFIX##_reserve_impl(q, new_capacity);                                     \
 		}                                                                                          \
                                                                                                            \
 		bool PREFIX##_init(PREFIX##_Queue* q) {                                                    \
@@ -129,7 +137,12 @@ bool PREFIX##_front(const PREFIX##_Queue* q, TYPE* out);
 			q->back = 0;                                                                       \
 			q->size = 0;                                                                       \
 		}                                                                                          \
-                                                                                                           \
+                                                                                                            \
+		bool PREFIX##_reserve(PREFIX##_Queue* q, size_t capacity) {                            \
+			assert(q != NULL);                                                                 \
+			return PREFIX##_reserve_impl(q, capacity);                                          \
+		}                                                                                          \
+                                                                                                            \
 		bool PREFIX##_enqueue(PREFIX##_Queue* q, TYPE item) {                                      \
 			assert(q != NULL);                                                                 \
 			if (PREFIX##_is_full(q)) {                                                         \

@@ -26,6 +26,7 @@ void   PREFIX##_free(PREFIX##_DynArray* darr);
 bool   PREFIX##_is_full(const PREFIX##_DynArray* darr);
 bool   PREFIX##_is_empty(const PREFIX##_DynArray* darr);
 void   PREFIX##_clear(PREFIX##_DynArray* darr);
+bool   PREFIX##_reserve(PREFIX##_DynArray* darr, size_t capacity);
 bool   PREFIX##_push(PREFIX##_DynArray* darr, TYPE item);
 bool   PREFIX##_pop(PREFIX##_DynArray* darr, TYPE* out);
 bool   PREFIX##_insert_at(PREFIX##_DynArray* darr, size_t index, TYPE item);
@@ -67,6 +68,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 	bool   PREFIX##_is_full(const PREFIX##_DynArray* darr);                                                                                     \
 	bool   PREFIX##_is_empty(const PREFIX##_DynArray* darr);                                                                                    \
 	void   PREFIX##_clear(PREFIX##_DynArray* darr);                                                                                             \
+	bool   PREFIX##_reserve(PREFIX##_DynArray* darr, size_t capacity);                                                                          \
 	bool   PREFIX##_push(PREFIX##_DynArray* darr, TYPE item);                                                                                   \
 	bool   PREFIX##_pop(PREFIX##_DynArray* darr, TYPE* out);                                                                                    \
 	bool   PREFIX##_insert_at(PREFIX##_DynArray* darr, size_t index, TYPE item);                                                                \
@@ -77,6 +79,17 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 	void   PREFIX##_sort(PREFIX##_DynArray* darr, int (*cmp)(const TYPE* x, const TYPE* y));                                                    \
                                                                                                                                                     \
 	CORE_DYNARRAY_IMPL(                                                                                                                         \
+		static bool PREFIX##_reserve_impl(PREFIX##_DynArray* darr, size_t min_capacity) {                                                   \
+			assert(darr != NULL);                                                                                                           \
+			if (min_capacity <= darr->capacity) return true;                                                                                  \
+			if (min_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                                                                     \
+			TYPE* new_items = (TYPE*)realloc(darr->items, min_capacity * sizeof(TYPE));                                                       \
+			if (new_items == NULL) return false;                                                                                              \
+			darr->items = new_items;                                                                                                          \
+			darr->capacity = min_capacity;                                                                                                    \
+			return true;                                                                                                                      \
+		}                                                                                                                                     \
+                                                                                                                                                    \
 		static bool PREFIX##_grow_impl(PREFIX##_DynArray* darr) {                                                                           \
 			assert(darr != NULL);                                                                                                       \
                                                                                                                                                     \
@@ -89,13 +102,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 				new_capacity = darr->capacity * CORE_DYNARRAY_GROWTH_RATE;                                                          \
 				if (new_capacity <= darr->capacity) return false;                                                                   \
 			}                                                                                                                           \
-			if (new_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                                                               \
-			TYPE* new_items = (TYPE*)realloc(darr->items, new_capacity * sizeof(TYPE));                                                 \
-			if (new_items == NULL) return false;                                                                                        \
-                                                                                                                                                    \
-			darr->items = new_items;                                                                                                    \
-			darr->capacity = new_capacity;                                                                                              \
-			return true;                                                                                                                \
+			return PREFIX##_reserve_impl(darr, new_capacity);                                                                          \
 		}                                                                                                                                   \
                                                                                                                                                     \
 		static void PREFIX##_swap_impl(PREFIX##_DynArray* darr, size_t i, size_t j) {                                                       \
@@ -166,6 +173,11 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 			darr->size = 0;                                                                                                             \
 		}                                                                                                                                   \
                                                                                                                                                     \
+		bool PREFIX##_reserve(PREFIX##_DynArray* darr, size_t capacity) {                                                               \
+			assert(darr != NULL);                                                                                                       \
+			return PREFIX##_reserve_impl(darr, capacity);                                                                              \
+		}                                                                                                                                   \
+                                                                                                                                                    \
 		bool PREFIX##_push(PREFIX##_DynArray* darr, TYPE item) {                                                                            \
 			assert(darr != NULL);                                                                                                       \
 			if (PREFIX##_is_full(darr)) {                                                                                               \
@@ -197,7 +209,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 			return true;                                                                                                                \
 		}                                                                                                                                   \
                                                                                                                                                     \
-		bool   PREFIX##_erase_at(PREFIX##_DynArray* darr, size_t index) {                                                                   \
+		bool PREFIX##_erase_at(PREFIX##_DynArray* darr, size_t index) {                                                                   \
 			assert(darr != NULL);                                                                                                       \
 			if (index >= darr->size) return false;                                                                                      \
 			if (PREFIX##_is_empty(darr)) return false;                                                                                  \

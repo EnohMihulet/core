@@ -26,6 +26,7 @@ void   PREFIX##_free(PREFIX##_RingBuffer* rbuf);
 bool   PREFIX##_is_full(const PREFIX##_RingBuffer* rbuf);
 bool   PREFIX##_is_empty(const PREFIX##_RingBuffer* rbuf);
 void   PREFIX##_clear(PREFIX##_RingBuffer* rbuf);
+bool   PREFIX##_reserve(PREFIX##_RingBuffer* rbuf, size_t capacity);
 bool   PREFIX##_push_front(PREFIX##_RingBuffer* rbuf, TYPE item);
 bool   PREFIX##_push_back(PREFIX##_RingBuffer* rbuf, TYPE item);
 bool   PREFIX##_pop_front(PREFIX##_RingBuffer* rbuf, TYPE* out);
@@ -69,6 +70,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 	bool   PREFIX##_is_full(const PREFIX##_RingBuffer* rbuf);                                                                                     \
 	bool   PREFIX##_is_empty(const PREFIX##_RingBuffer* rbuf);                                                                                    \
 	void   PREFIX##_clear(PREFIX##_RingBuffer* rbuf);                                                                                             \
+	bool   PREFIX##_reserve(PREFIX##_RingBuffer* rbuf, size_t capacity);                                                                          \
 	bool   PREFIX##_push_front(PREFIX##_RingBuffer* rbuf, TYPE item);                                                                             \
 	bool   PREFIX##_push_back(PREFIX##_RingBuffer* rbuf, TYPE item);                                                                              \
 	bool   PREFIX##_pop_front(PREFIX##_RingBuffer* rbuf, TYPE* out);                                                                              \
@@ -92,6 +94,23 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 		static size_t PREFIX##_dec_impl(const PREFIX##_RingBuffer* rbuf, size_t i) {                                                          \
 			return (i == 0) ? rbuf->capacity - 1 : i - 1;                                                                                 \
 		}                                                                                                                                     \
+                                                                                                                                                       \
+		static bool PREFIX##_reserve_impl(PREFIX##_RingBuffer* rbuf, size_t min_capacity) {                                                 \
+			assert(rbuf != NULL);                                                                                                         \
+			if (min_capacity <= rbuf->capacity) return true;                                                                                \
+			if (min_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                                                                   \
+			TYPE* new_items = (TYPE*)malloc(min_capacity * sizeof(TYPE));                                                                   \
+			if (new_items == NULL) return false;                                                                                            \
+			for (size_t i = 0; i < rbuf->size; i++) {                                                                                       \
+				new_items[i] = rbuf->items[PREFIX##_index_impl(rbuf, i)];                                                                 \
+			}                                                                                                                             \
+			free(rbuf->items);                                                                                                            \
+			rbuf->items = new_items;                                                                                                      \
+			rbuf->front = 0;                                                                                                              \
+			rbuf->back = rbuf->size ? rbuf->size - 1 : 0;                                                                                 \
+			rbuf->capacity = min_capacity;                                                                                                \
+			return true;                                                                                                                  \
+		}                                                                                                                                     \
                                                                                                                                                       \
 		static bool PREFIX##_grow_impl(PREFIX##_RingBuffer* rbuf) {                                                                           \
 			assert(rbuf != NULL);                                                                                                         \
@@ -105,19 +124,7 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 				new_capacity = rbuf->capacity * CORE_RINGBUFFER_GROWTH_RATE;                                                          \
 				if (new_capacity <= rbuf->capacity) return false;                                                                     \
 			}                                                                                                                             \
-			if (new_capacity > ((size_t)-1) / sizeof(TYPE)) return false;                                                                 \
-			TYPE* new_items = (TYPE*)malloc(new_capacity * sizeof(TYPE));                                                                 \
-			if (new_items == NULL) return false;                                                                                          \
-			for (size_t i = 0; i < rbuf->size; i++) {                                                                                     \
-				new_items[i] = rbuf->items[PREFIX##_index_impl(rbuf, i)];                                                             \
-			}                                                                                                                             \
-                                                                                                                                                      \
-			free(rbuf->items);                                                                                                            \
-			rbuf->items = new_items;                                                                                                      \
-			rbuf->front = 0;                                                                                                              \
-			rbuf->back = rbuf->size ? rbuf->size - 1 : 0;                                                                                 \
-			rbuf->capacity = new_capacity;                                                                                                \
-			return true;                                                                                                                  \
+			return PREFIX##_reserve_impl(rbuf, new_capacity);                                                                             \
 		}                                                                                                                                     \
                                                                                                                                                       \
 		static void PREFIX##_swap_impl(PREFIX##_RingBuffer* rbuf, size_t i, size_t j) {                                                       \
@@ -194,6 +201,11 @@ PREFIX##_sort expects cmp to define a consistent ordering.
 			rbuf->size = 0;                                                                                                               \
 		}                                                                                                                                     \
                                                                                                                                                       \
+		bool PREFIX##_reserve(PREFIX##_RingBuffer* rbuf, size_t capacity) {                                                               \
+			assert(rbuf != NULL);                                                                                                         \
+			return PREFIX##_reserve_impl(rbuf, capacity);                                                                                  \
+		}                                                                                                                                     \
+                                                                                                                                                       \
 		bool PREFIX##_push_front(PREFIX##_RingBuffer* rbuf, TYPE item) {                                                                      \
 			assert(rbuf != NULL);                                                                                                         \
 			if (PREFIX##_is_full(rbuf)) {                                                                                                 \
