@@ -4,7 +4,7 @@
 #include "test.h"
 
 #define CORE_DYNARRAY_IMPLEMENTATION
-#include "../dynarray.h"
+#include "../DataStructures/dynarray.h"
 
 static int tests_run = 0;
 static int tests_failed = 0;

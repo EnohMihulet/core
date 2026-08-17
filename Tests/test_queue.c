@@ -4,7 +4,7 @@
 #include "test.h"
 
 #define CORE_QUEUE_IMPLEMENTATION
-#include "../queue.h"
+#include "../DataStructures/queue.h"
 
 static int tests_run = 0;
 static int tests_failed = 0;

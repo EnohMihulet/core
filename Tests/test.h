@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdio.h>
 
 #define CHECK(expr)                                                                              \
@@ -18,4 +20,3 @@
 			fprintf(stdout, "PASSED: %s\n", #fn);                                    \
 		}                                                                                \
 	} while (0)
-

@@ -4,7 +4,7 @@
 #include "test.h"
 
 #define CORE_STACK_IMPLEMENTATION
-#include "../stack.h"
+#include "../DataStructures/stack.h"
 
 static int tests_run = 0;
 static int tests_failed = 0;

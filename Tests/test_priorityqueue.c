@@ -4,7 +4,7 @@
 #include "test.h"
 
 #define CORE_PRIORITYQUEUE_IMPLEMENTATION
-#include "../priorityqueue.h"
+#include "../DataStructures/priorityqueue.h"
 
 static int tests_run = 0;
 static int tests_failed = 0;
@@ -322,6 +322,34 @@ static bool test_extract(void) {
 	return true;
 }
 
+static bool test_peek(void) {
+	int_PrioQueue ipq;
+	int out = -1;
+
+	CHECK(int_init(&ipq, &cmp_int_gt));
+	CHECK(!int_peek(&ipq, &out));
+	CHECK(int_insert(&ipq, 3));
+	CHECK(int_insert(&ipq, 8));
+	CHECK(int_insert(&ipq, 5));
+	CHECK(int_peek(&ipq, &out));
+	CHECK(out == 8);
+	CHECK(ipq.size == 3);
+	CHECK(int_extract(&ipq, &out) && out == 8);
+	CHECK(int_peek(&ipq, &out) && out == 5);
+	int_free(&ipq);
+
+	TestStruct_PrioQueue spq;
+	TestStruct value = {0};
+	CHECK(TestStruct_init(&spq, &cmp_TestStruct_lt));
+	CHECK(TestStruct_insert(&spq, (TestStruct){.x = 1, .y = 20}));
+	CHECK(TestStruct_insert(&spq, (TestStruct){.x = 2, .y = 10}));
+	CHECK(TestStruct_peek(&spq, &value));
+	CHECK(value.x == 2 && value.y == 10);
+	CHECK(spq.size == 2);
+	TestStruct_free(&spq);
+	return true;
+}
+
 static void run_tests(void) {
 	RUN_TEST(test_init);
 	RUN_TEST(test_is_full);
@@ -329,6 +357,7 @@ static void run_tests(void) {
 	RUN_TEST(test_reserve);
 	RUN_TEST(test_insert);
 	RUN_TEST(test_extract);
+	RUN_TEST(test_peek);
 }
 
 int main(void) {

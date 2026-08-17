@@ -4,7 +4,7 @@
 #include "test.h"
 
 #define CORE_RINGBUFFER_IMPLEMENTATION
-#include "../ringbuffer.h"
+#include "../DataStructures/ringbuffer.h"
 
 static int tests_run = 0;
 static int tests_failed = 0;
